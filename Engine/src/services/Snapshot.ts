@@ -6,26 +6,26 @@ import type { Trade } from "../utils/TradeStore";
 
 const CHUNK = 1000;
 
-function compareStreamIds(a?: string | null, b?: string | null): number {
-  if (!a && !b) return 0;
-  if (!a) return -1;
-  if (!b) return 1;
+// function compareStreamIds(a?: string | null, b?: string | null): number {
+//   if (!a && !b) return 0;
+//   if (!a) return -1;
+//   if (!b) return 1;
 
-  const [aTime, aSeq] = a.split("-").map((v) => Number(v || 0));
-  const [bTime, bSeq] = b.split("-").map((v) => Number(v || 0));
+//   const [aTime, aSeq] = a.split("-").map((v) => Number(v || 0));
+//   const [bTime, bSeq] = b.split("-").map((v) => Number(v || 0));
 
-  if (aTime > bTime) return 1;
-  if (aTime < bTime) return -1;
-  if (aSeq > bSeq) return 1;
-  if (aSeq < bSeq) return -1;
-  return 0;
-}
-function getHighestStreamId(batch: Trade[]): string {
-  return batch.reduce((max, t) => {
-    if (!t.streamId) return max;
-    return compareStreamIds(t.streamId, max) > 0 ? t.streamId! : max;
-  }, "0-0");
-}
+//   if (aTime > bTime) return 1;
+//   if (aTime < bTime) return -1;
+//   if (aSeq > bSeq) return 1;
+//   if (aSeq < bSeq) return -1;
+//   return 0;
+// }
+// function getHighestStreamId(batch: Trade[]): string {
+//   return batch.reduce((max, t) => {
+//     if (!t.streamId) return max;
+//     return compareStreamIds(t.streamId, max) > 0 ? t.streamId! : max;
+//   }, "0-0");
+// }
 
 export async function snapshots() {
   const closedTrades = TradeStoreManager.getInstance().getAllClosedTrades(); // <- matches TradeStore.ts
@@ -59,14 +59,14 @@ export async function snapshots() {
           skipDuplicates: true,
         });
 
-        const highest = getHighestStreamId(batch);
-        if (highest && highest !== "0-0") {
-          lastProcessedId.getInstance().setLastProcessedId(highest);
-        }
+        // const highest = getHighestStreamId(batch);
+        // if (highest && highest !== "0-0") {
+        //   lastProcessedId.getInstance().setLastProcessedId(highest);
+        // }
 
-        console.log(
-          `Flushed ${batch.length} trades for ${symbol}, up to ${highest}`
-        );
+        // console.log(
+        //   `Flushed ${batch.length} trades for ${symbol}, up to ${highest}`
+        // );
       } catch (err) {
         console.error(`Error persisting batch for ${symbol}:`, err);
         // put the batch back at the front so next run retries 

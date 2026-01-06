@@ -27,12 +27,12 @@ export function liquidation() {
         
         const pnl = sign * (exit - openPrice) * quantity * leverage;
 
-        // Liquidation condition: loss >= 90% of margin
+       
         if (pnl <= -0.9 * margin) {
-          // Close trade
+          
           TradeStoreManager.getInstance().closeTrade(symbol, tradeId, exit,true);
 
-          // Update balance
+          // Updating balance
           const balance = User.getInstance().getBalance(userId);
           const newBalance = balance + margin + pnl;
           User.getInstance().updateBalance(userId, newBalance);

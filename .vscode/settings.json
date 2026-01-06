@@ -1,3 +1,5 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "editor.inlineSuggest.enabled": false,
+    "prisma.pinToPrisma6": true
 }

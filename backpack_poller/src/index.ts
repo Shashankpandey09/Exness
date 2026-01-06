@@ -46,10 +46,10 @@ async function startPoller() {
     const payload = PollerManager.getInstance().get();
     const newPayload = {
       price_updates: payload,
-      type:'Price_updates'
+      type: 'Price_updates'
     };
     if (payload.length > 0) {
-      redisClient.xAdd("trades","*",{'data':JSON.stringify(newPayload)} );
+      redisClient.xAdd("trades", "*", { 'data': JSON.stringify(newPayload) });
       console.log(" Published:", JSON.stringify(newPayload));
     }
   }, 200);

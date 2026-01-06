@@ -15,10 +15,10 @@ const SECRET_KEY = process.env.SECRET_KEY as string;
 
 
 UserRouter.post("/signup", async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Email and password are required" });
+  if (!email) {
+    return res.status(400).json({ message: "Email  required" });
   }
 
   try {
@@ -28,8 +28,8 @@ UserRouter.post("/signup", async (req: Request, res: Response) => {
       return res.status(409).json({ message: "User already exists" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+
+
 
     // Create user in database (unverified initially)
     const user = await prisma.user.create({
@@ -50,9 +50,16 @@ UserRouter.post("/signup", async (req: Request, res: Response) => {
       console.warn("Failed to send verification email, but user was created");
     }
 
-    // Push to Redis streams
-    const args = ['XADD', 'trades', '*', 'user', `${user.id}`, 'balance', `${user.usd_balance}`];
-    const streamId = await redisClient.sendCommand(args);
+    // // Push to Redis streams
+    // const args = ['XADD', 'trades', '*', 'user', `${user.id}`, 'balance', `${user.usd_balance}`];
+    const payload = {
+      type: "user_signup",
+      payload: {
+        user: user.id,
+        balance: user.usd_balance,
+      }
+    }
+    const streamId = await redisClient.xAdd("trades", "*", { data: JSON.stringify(payload) })
     console.log("Redis stream ID:", streamId);
 
     return res.status(201).json({

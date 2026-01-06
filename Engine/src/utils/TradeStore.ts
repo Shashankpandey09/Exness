@@ -1,20 +1,8 @@
 import { lastProcessedId } from "./ProcessedID";
+import { Trade, TradeType } from "../types";
 
-export type Trade = {
-  tradeId: string;
-  type: "buy" | "sell";
-  quantity: number;
-  openPrice: number;
-  status: "open" | "closed";
-  leverage: number;
-  userId: number;
-  closedPrice?: number;
-  streamId?: string;
-  symbol: string;
-  pnl?: number;
-  margin?: number;
-  liquidated?: boolean;
-};
+// Re-export Trade for backwards compatibility
+export type { Trade };
 
 export class TradeStoreManager {
   private static instance: TradeStoreManager;
@@ -22,7 +10,7 @@ export class TradeStoreManager {
   private openIndex = new Map<string, Set<string>>();
   private closedTrades = new Map<string, Trade[]>();
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): TradeStoreManager {
     if (!TradeStoreManager.instance) {
@@ -34,7 +22,7 @@ export class TradeStoreManager {
   public addOpenTrade(
     symbol: string,
     tradeId: string,
-    type: "buy" | "sell",
+    type: TradeType,
     quantity: number,
     openPrice: number,
     leverage: number,
@@ -64,12 +52,12 @@ export class TradeStoreManager {
     return true;
   }
 
-  public closeTrade(
+  public async closeTrade(
     symbol: string,
     tradeId: string,
     closedPrice: number,
     liquidated: boolean = false
-  ): boolean {
+  ): Promise<boolean> {
     const trades = this.openTrades.get(symbol) || [];
     if (trades.length === 0) return false;
 
@@ -83,7 +71,7 @@ export class TradeStoreManager {
     // mark closed
     trade.status = "closed";
     trade.closedPrice = closedPrice;
-    trade.streamId = lastProcessedId.getInstance().getLastProcessedId();
+    trade.streamId = await lastProcessedId.getInstance().getLastProcessedId();
     trade.symbol = symbol;
     trade.liquidated = liquidated;
 

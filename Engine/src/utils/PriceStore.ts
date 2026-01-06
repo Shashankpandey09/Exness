@@ -1,26 +1,17 @@
-interface assetData {
-  asset: string;
-  price: number;
-  decimals: number;
-}
-interface assetMapType {
-  symbol: string;
-  askPrice: number;
-  sellPrice: number;
-  decimal: number;
-}
+import { AssetData, AssetMapType } from "../types";
+
 export class PriceStoreManager {
   private static _instance: PriceStoreManager;
-  private Prices = new Map<string, assetMapType>();
+  private Prices = new Map<string, AssetMapType>();
   private assetInDb = new Map<string, string>();
 
-  private constructor() {}
+  private constructor() { }
   public static getInstance(): PriceStoreManager {
     if (!PriceStoreManager._instance)
       return (PriceStoreManager._instance = new PriceStoreManager());
     return PriceStoreManager._instance;
   }
-  public set(assets: assetData[]) {
+  public set(assets: AssetData[]) {
     //iterating through array
     assets.forEach((asset) => {
       //applying spreading of 1 percent

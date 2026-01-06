@@ -5,13 +5,18 @@ import { User } from "./utils/UserBalanceStore";
 import { Calc, calculatePnl } from "./utils/CalculateMargin";
 import { lastProcessedId } from "./utils/ProcessedID";
 import { insertAsset } from "./services/createAsset";
+import {
+  MessageType,
+  PriceUpdateMessage,
+  OpenOrderMessage,
+  CloseOrderMessage,
+} from "./types";
 
-const EngineClient = createClient();
-let lastProcessedid = lastProcessedId.getInstance().getLastProcessedId();
+export const EngineClient = createClient();
 
-function parseMessage(msg: any) {
+function parseMessage(msg: any): MessageType | null {
   try {
-    return JSON.parse(msg.message.data);
+    return JSON.parse(msg.message.data) as MessageType;
   } catch (e) {
     console.error("Invalid JSON:", e);
     return null;
@@ -19,13 +24,12 @@ function parseMessage(msg: any) {
 }
 
 // --- Handler: price updates ---
-function handlePriceUpdate(data: any) {
+function handlePriceUpdate(data: PriceUpdateMessage): void {
   if (!data.price_updates) return;
   PriceStoreManager.getInstance().set(data.price_updates);
 }
 
-// --- Handler: open order ---
- function handleOpenOrder(data: any, id: string) {
+function handleOpenOrder(data: OpenOrderMessage, id: string): void {
   const { symbol, tradeId, type, quantity, userId, leverage } = data.payload;
   const currentPrice = PriceStoreManager.getInstance().get(symbol);
   if (!currentPrice) {
@@ -55,13 +59,13 @@ function handlePriceUpdate(data: any) {
   );
 
   User.getInstance().updateBalance(userId, balance - margin);
-  if(!PriceStoreManager.getInstance().getAssetId(symbol)){
-       insertAsset(symbol).catch(err=>console.log(err))
+  if (!PriceStoreManager.getInstance().getAssetId(symbol)) {
+    insertAsset(symbol).catch((err) => console.log(err));
   }
+ 
 }
 
-// --- Handler: close order ---
-function handleCloseOrder(data: any, id: string) {
+async function handleCloseOrder(data: CloseOrderMessage, id: string) {
   const { symbol, tradeId, userId, type } = data.payload;
   const currentPrice = PriceStoreManager.getInstance().get(symbol);
   if (!currentPrice) {
@@ -72,7 +76,7 @@ function handleCloseOrder(data: any, id: string) {
   const closePrice =
     type === "buy" ? currentPrice.sellPrice : currentPrice.askPrice;
 
-  TradeStoreManager.getInstance().closeTrade(symbol, tradeId, closePrice);
+  await TradeStoreManager.getInstance().closeTrade(symbol, tradeId, closePrice);
 
   const balance = User.getInstance().getBalance(userId);
   const result = calculatePnl(type, balance, tradeId, userId, symbol);
@@ -84,12 +88,11 @@ function handleCloseOrder(data: any, id: string) {
   }
 }
 
-// --- Dispatcher ---
-function handleMessage(data: any, id: string) {
+function handleMessage(data: MessageType, id: string): void {
   if (!data?.type) return;
 
   switch (data.type) {
-    case "price_updates":
+    case "Price_updates":
       handlePriceUpdate(data);
       break;
     case "open_ORDER":
@@ -98,17 +101,24 @@ function handleMessage(data: any, id: string) {
     case "close_ORDER":
       handleCloseOrder(data, id);
       break;
+    case "user_signup":
+      User.getInstance().updateBalance(data.payload.user, data.payload.balance);
+      break;
     default:
-      console.warn("Unknown message type:", data.type);
+      const exhaustive: never = data;
+      console.warn("Unknown message type:", (data as any).type);
+      break;
   }
 }
 
-// --- Main loop ---
 async function StartEngine() {
   try {
     await EngineClient.connect();
     console.log("Engine Client connected");
     console.log("trades length:", await EngineClient.xLen("trades"));
+    let lastProcessedid = await lastProcessedId
+      .getInstance()
+      .getLastProcessedId();
 
     while (true) {
       const streamData = await EngineClient.xRead(
@@ -120,19 +130,24 @@ async function StartEngine() {
 
       for (const stream of streamData) {
         for (const message of stream.messages) {
-          console.log(message)
+          console.log(message);
           const id = message.id;
           const data = parseMessage(message);
           if (!data) {
             lastProcessedid = id;
-            lastProcessedId.getInstance().setLastProcessedId(lastProcessedid)
+            lastProcessedId.getInstance().setLastProcessedId(lastProcessedid);
             continue;
           }
 
           handleMessage(data, id);
           lastProcessedid = id; // advance pointer
-          lastProcessedId.getInstance().setLastProcessedId(lastProcessedid)
-          console.log('done')
+          lastProcessedId.getInstance().setLastProcessedId(lastProcessedid);
+          //update the last processedId in the redis cache
+          await EngineClient.set(
+            "lastProcessedStreamId",
+            JSON.stringify(lastProcessedid)
+          );
+          console.log("done");
         }
       }
     }

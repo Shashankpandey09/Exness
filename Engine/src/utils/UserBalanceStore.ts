@@ -1,13 +1,11 @@
-interface UserType {
-  userId: number;
-  usd_balance: number;
-}
+import { UserType } from "../types";
+
 
 export class User {
   private static instance: User;
   private userAccount = new Map<number, UserType>();
   private readonly DEFAULT_BALANCE = 5000;
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): User {
     if (!User.instance) {
@@ -16,7 +14,7 @@ export class User {
     return User.instance;
   }
 
- public getBalance(userId: number): number {
+  public getBalance(userId: number): number {
     let account = this.userAccount.get(userId);
     if (!account) {
       account = { userId, usd_balance: this.DEFAULT_BALANCE };
@@ -26,7 +24,7 @@ export class User {
   }
 
   // optional if you want to add/subtract instead of replace
- public updateBalance(userId: number, delta: number): number {
+  public updateBalance(userId: number, delta: number): number {
     if (!Number.isFinite(delta)) throw new Error("Invalid delta");
 
     let account = this.userAccount.get(userId);
