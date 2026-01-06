@@ -1,11 +1,13 @@
 {
   "name": "backpack_poller",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Real-time price feed from Backpack Exchange",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc -b && node dist/index.js"
+    "build": "tsc",
+    "dev": "tsc -b && node dist/index.js",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +17,8 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.1",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }

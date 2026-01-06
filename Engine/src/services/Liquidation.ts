@@ -16,7 +16,7 @@ export function liquidation() {
       for (const trade of trades) {
         const { type, quantity, openPrice, leverage, tradeId, userId } = trade;
 
- 
+
         const margin = Calc(quantity, type, leverage, openPrice);
 
         const sign = type === "buy" ? 1 : -1;
@@ -24,13 +24,13 @@ export function liquidation() {
 
         const exit = type === "buy" ? quote.askPrice : quote.sellPrice;
 
-        
+
         const pnl = sign * (exit - openPrice) * quantity * leverage;
 
-       
+
         if (pnl <= -0.9 * margin) {
-          
-          TradeStoreManager.getInstance().closeTrade(symbol, tradeId, exit,true);
+
+          TradeStoreManager.getInstance().closeTrade(symbol, tradeId, exit, true);
 
           // Updating balance
           const balance = User.getInstance().getBalance(userId);
@@ -43,5 +43,5 @@ export function liquidation() {
         }
       }
     }
-  }, 50); 
+  }, 50);
 }

@@ -3,9 +3,8 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../utils/prisma";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import dotenv from 'dotenv';
-
-import { redisClient } from "..";
+import dotenv from "dotenv";
+import { getRedisClient } from "..";
 import { sendMagicLinkEmail } from "../utils/SendEmail";
 
 dotenv.config();
@@ -59,7 +58,7 @@ UserRouter.post("/signup", async (req: Request, res: Response) => {
         balance: user.usd_balance,
       }
     }
-    const streamId = await redisClient.xAdd("trades", "*", { data: JSON.stringify(payload) })
+    const streamId = await getRedisClient().xAdd("trades", "*", { data: JSON.stringify(payload) })
     console.log("Redis stream ID:", streamId);
 
     return res.status(201).json({

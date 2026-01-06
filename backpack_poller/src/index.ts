@@ -2,7 +2,6 @@ import WebSocket from "ws";
 import { createClient } from "redis";
 import { PollerManager } from "./utils/PollerManager";
 
-
 type SymbolKey = "BTC_USDC" | "ETH_USDC" | "SOL_USDC_PERP";
 const decimals: Record<SymbolKey, number> = {
   BTC_USDC: 1,
@@ -16,9 +15,12 @@ const Subscribe = [
   { method: "SUBSCRIBE", params: ["bookTicker.SOL_USDC_PERP"], id: 3 },
 ];
 
+const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+
 async function startPoller() {
-  const redisClient = createClient();
+  const redisClient = createClient({ url: redisUrl });
   await redisClient.connect();
+  console.log("✅ Connected to Redis at", redisUrl);
 
   const ws = new WebSocket("wss://ws.backpack.exchange/");
 
@@ -41,15 +43,14 @@ async function startPoller() {
     PollerManager.getInstance().set(sym, intPrice, dec);
   });
 
-  // publish every 100ms
   setInterval(() => {
     const payload = PollerManager.getInstance().get();
     const newPayload = {
       price_updates: payload,
-      type: 'Price_updates'
+      type: "Price_updates",
     };
     if (payload.length > 0) {
-      redisClient.xAdd("trades", "*", { 'data': JSON.stringify(newPayload) });
+      redisClient.xAdd("trades", "*", { data: JSON.stringify(newPayload) });
       console.log(" Published:", JSON.stringify(newPayload));
     }
   }, 200);

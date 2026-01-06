@@ -13,6 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum STATUS {
+  open
+  closed
+}
+
 model User {
   id            Int             @id @default(autoincrement())
   username      String          @unique
@@ -44,5 +49,6 @@ model ExistingTrade {
   user       User     @relation(fields: [userId], references: [id])
   liquidated Boolean
   createdAt  DateTime @default(now())
+  status     STATUS
   asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
 }
