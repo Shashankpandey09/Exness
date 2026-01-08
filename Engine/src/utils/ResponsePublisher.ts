@@ -13,11 +13,12 @@ export interface TradeResponse {
     };
 }
 
+const RESPONSE_STREAM = "trade_responses";
+
 export async function publishTradeResponse(response: TradeResponse): Promise<void> {
-    const channel = `trade_response:${response.tradeId}`;
     try {
-        await EngineClient.publish(channel, JSON.stringify(response));
-        console.log(`📤 Published response for trade ${response.tradeId}: ${response.success ? "SUCCESS" : "FAILED"}`);
+        await EngineClient.xAdd(RESPONSE_STREAM, "*", { data: JSON.stringify(response) });
+        console.log(`Published response for trade ${response.tradeId}: ${response.success ? "SUCCESS" : "FAILED"}`);
     } catch (error) {
         console.error(`Failed to publish response for trade ${response.tradeId}:`, error);
     }

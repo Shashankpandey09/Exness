@@ -26,10 +26,10 @@ async function startServer() {
 
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-      console.log(`🚀 Server started on port ${PORT}`);
+      console.log(`Server started on port ${PORT}`);
     });
   } catch (error) {
-    console.error("❌ Failed to start:", error);
+    console.error("Failed to start:", error);
     process.exit(1);
   }
 }
