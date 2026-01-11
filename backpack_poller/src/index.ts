@@ -20,7 +20,7 @@ const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 async function startPoller() {
   const redisClient = createClient({ url: redisUrl });
   await redisClient.connect();
-  console.log("✅ Connected to Redis at", redisUrl);
+  console.log("Connected to Redis at", redisUrl);
 
   const ws = new WebSocket("wss://ws.backpack.exchange/");
 
@@ -43,14 +43,15 @@ async function startPoller() {
     PollerManager.getInstance().set(sym, intPrice, dec);
   });
 
-  setInterval(() => {
+  setInterval(async () => {
     const payload = PollerManager.getInstance().get();
     const newPayload = {
       price_updates: payload,
       type: "Price_updates",
     };
     if (payload.length > 0) {
-      redisClient.xAdd("trades", "*", { data: JSON.stringify(newPayload) });
+      await redisClient.xAdd("trades", "*", { data: JSON.stringify(newPayload) });
+      await redisClient.publish("trades", JSON.stringify(newPayload));
       console.log(" Published:", JSON.stringify(newPayload));
     }
   }, 200);
