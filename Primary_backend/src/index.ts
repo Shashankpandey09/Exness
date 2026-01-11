@@ -1,27 +1,49 @@
 import express from "express";
+import dotenv from "dotenv";
 import { UserRouter } from "./routes/User";
-import { createClient } from "redis";
+import { tradeRouter } from "./routes/Trades";
+import { RedisManager } from "./utils/RedisManager";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-export const redisClient = createClient();
+export const redisManager = RedisManager.getInstance();
 
-redisClient.on("connect", () => console.log(" Connected to Redis"));
-redisClient.on("error", (err) => console.error(" Redis Client Error:", err));
+export const getRedisClient = () => redisManager.getMainClient();
 
 app.use("/api/v1/user", UserRouter);
+app.use("/api/v1", tradeRouter);
 
-async function Express() {
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+async function startServer() {
   try {
-    await redisClient.connect();
+    await redisManager.connect();
 
-    app.listen(3000, () => {
-      console.log(" Server started on port 3000");
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`Server started on port ${PORT}`);
     });
   } catch (error) {
-    console.error(" Failed to start:", error);
+    console.error("Failed to start:", error);
+    process.exit(1);
   }
 }
 
-Express();
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, shutting down...");
+  await redisManager.disconnect();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, shutting down...");
+  await redisManager.disconnect();
+  process.exit(0);
+});
+
+startServer();

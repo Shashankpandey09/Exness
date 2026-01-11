@@ -11,8 +11,16 @@ import {
   OpenOrderMessage,
   CloseOrderMessage,
 } from "./types";
+import { liquidation } from "./services/Liquidation";
+import { snapshots } from "./services/Snapshot";
+import {
+  publishTradeResponse,
+  createSuccessResponse,
+  createFailureResponse,
+} from "./utils/ResponsePublisher";
 
-export const EngineClient = createClient();
+const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+export const EngineClient = createClient({ url: redisUrl });
 
 function parseMessage(msg: any): MessageType | null {
   try {
@@ -23,17 +31,20 @@ function parseMessage(msg: any): MessageType | null {
   }
 }
 
-// --- Handler: price updates ---
 function handlePriceUpdate(data: PriceUpdateMessage): void {
   if (!data.price_updates) return;
   PriceStoreManager.getInstance().set(data.price_updates);
 }
 
-function handleOpenOrder(data: OpenOrderMessage, id: string): void {
+async function handleOpenOrder(data: OpenOrderMessage, id: string): Promise<void> {
   const { symbol, tradeId, type, quantity, userId, leverage } = data.payload;
   const currentPrice = PriceStoreManager.getInstance().get(symbol);
+
   if (!currentPrice) {
     console.log(`No price for symbol ${symbol}`);
+    await publishTradeResponse(
+      createFailureResponse(tradeId, `No price available for symbol ${symbol}`)
+    );
     return;
   }
 
@@ -45,6 +56,12 @@ function handleOpenOrder(data: OpenOrderMessage, id: string): void {
 
   if (balance < margin) {
     console.log("Insufficient balance for", tradeId);
+    await publishTradeResponse(
+      createFailureResponse(
+        tradeId,
+        `Insufficient balance. Required: ${margin}, Available: ${balance}`
+      )
+    );
     return;
   }
 
@@ -59,17 +76,29 @@ function handleOpenOrder(data: OpenOrderMessage, id: string): void {
   );
 
   User.getInstance().updateBalance(userId, balance - margin);
+
   if (!PriceStoreManager.getInstance().getAssetId(symbol)) {
     insertAsset(symbol).catch((err) => console.log(err));
   }
- 
+
+  await publishTradeResponse(
+    createSuccessResponse(tradeId, "Trade opened successfully", {
+      openPrice,
+      margin,
+      balance: balance - margin,
+    })
+  );
 }
 
-async function handleCloseOrder(data: CloseOrderMessage, id: string) {
+async function handleCloseOrder(data: CloseOrderMessage, id: string): Promise<void> {
   const { symbol, tradeId, userId, type } = data.payload;
   const currentPrice = PriceStoreManager.getInstance().get(symbol);
+
   if (!currentPrice) {
     console.log(`No price for symbol ${symbol}`);
+    await publishTradeResponse(
+      createFailureResponse(tradeId, `No price available for symbol ${symbol}`)
+    );
     return;
   }
 
@@ -85,10 +114,22 @@ async function handleCloseOrder(data: CloseOrderMessage, id: string) {
     const { pnl, newBalance } = result;
     console.log(`Trade ${tradeId} closed. PnL = ${pnl}`);
     User.getInstance().updateBalance(userId, newBalance);
+
+    await publishTradeResponse(
+      createSuccessResponse(tradeId, "Trade closed successfully", {
+        closePrice,
+        pnl,
+        balance: newBalance,
+      })
+    );
+  } else {
+    await publishTradeResponse(
+      createFailureResponse(tradeId, "Failed to close trade. Trade not found or invalid state.")
+    );
   }
 }
 
-function handleMessage(data: MessageType, id: string): void {
+async function handleMessage(data: MessageType, id: string): Promise<void> {
   if (!data?.type) return;
 
   switch (data.type) {
@@ -96,10 +137,10 @@ function handleMessage(data: MessageType, id: string): void {
       handlePriceUpdate(data);
       break;
     case "open_ORDER":
-      handleOpenOrder(data, id);
+      await handleOpenOrder(data, id);
       break;
     case "close_ORDER":
-      handleCloseOrder(data, id);
+      await handleCloseOrder(data, id);
       break;
     case "user_signup":
       User.getInstance().updateBalance(data.payload.user, data.payload.balance);
@@ -119,6 +160,8 @@ async function StartEngine() {
     let lastProcessedid = await lastProcessedId
       .getInstance()
       .getLastProcessedId();
+    liquidation();
+    snapshots();
 
     while (true) {
       const streamData = await EngineClient.xRead(
@@ -127,7 +170,7 @@ async function StartEngine() {
       );
 
       if (!streamData) continue;
-
+      //@ts-ignore
       for (const stream of streamData) {
         for (const message of stream.messages) {
           console.log(message);
@@ -139,10 +182,9 @@ async function StartEngine() {
             continue;
           }
 
-          handleMessage(data, id);
-          lastProcessedid = id; // advance pointer
+          await handleMessage(data, id);
+          lastProcessedid = id;
           lastProcessedId.getInstance().setLastProcessedId(lastProcessedid);
-          //update the last processedId in the redis cache
           await EngineClient.set(
             "lastProcessedStreamId",
             JSON.stringify(lastProcessedid)

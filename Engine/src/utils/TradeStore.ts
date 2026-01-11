@@ -114,7 +114,7 @@ export class TradeStoreManager {
     return [...this.openTrades.entries()];
   }
 
-  public getAllClosedTrades(): [string, Trade[]][] {
-    return [...this.closedTrades.entries()];
+  public getAllTrades(): [string, Trade[]][] {
+    return [...this.closedTrades.entries(), ...this.openTrades.entries()];
   }
 }
