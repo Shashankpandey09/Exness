@@ -16,24 +16,7 @@ A high-performance, real-time cryptocurrency trading platform with leveraged tra
 
 <img width="1806" height="902" alt="image" src="https://github.com/user-attachments/assets/b12cebac-7651-49b8-a4e1-62ce5a185634" />
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Frontend      │────▶│ Primary Backend │────▶│  Redis Streams  │
-│   (Client)      │◀────│   (Express)     │◀────│   (trades)      │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                              │                          │
-                              │                          ▼
-                              │                 ┌─────────────────┐
-                              │                 │     Engine      │
-                              │                 │ (Trade Processor)│
-                              │                 └────────┬────────┘
-                              │                          │
-                              ▼                          ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │   PostgreSQL    │◀────│ Backpack Poller │
-                        │   (Database)    │     │ (Price Feeds)   │
-                        └─────────────────┘     └─────────────────┘
-```
+
 
 
 
